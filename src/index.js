@@ -29,6 +29,7 @@ const typeDefs = `
     userID: ID!
     id: ID!
     title: String!
+    photos: [Photos!]
   }
 
   type Photos {
@@ -51,7 +52,7 @@ const typeDefs = `
     id: ID!
     title: String!
     body: String!
-    comment: [Comments!]
+    comments: [Comments!]
   } 
 
   type Comments {
@@ -92,10 +93,26 @@ const resolvers = {
     users: async (_, { id }) => {
       const prUsers = await fetch(`https://jsonplaceholder.typicode.com/users/${ id ? id : ''}`)
       const prTodos = await fetch(`https://jsonplaceholder.typicode.com/todos${ id ? `?userId=${id}`: ''}`)
+      const prPosts = await fetch(`https://jsonplaceholder.typicode.com/posts${ id ? `?userId=${id}`: ''}`)
+      const prComments = await fetch(`https://jsonplaceholder.typicode.com/comments`)
       if(id){
         const users = [await prUsers.json()]
         const todos = await prTodos.json()
-        return [Object.assign(users[0], { todos })]
+        const posts = await prPosts.json()
+        const comments = await prComments.json()
+        for(i in posts){
+          for(x in comments){
+            if(posts[i].id === comments[x].postId){
+              if(!posts[i].comments){
+                Object.assign(posts[i], { comments: [comments[x]]})
+              }
+                posts[i].comments.push(comments[x])
+            }
+          }
+        }
+        const c = [Object.assign(users[0], { todos }, { posts })]
+        console.log(c, 'hello')
+        return c
       }
       return await users.json()
     },
@@ -108,7 +125,13 @@ const resolvers = {
       return await photos.json()
     },
     albums: async (_, { id }) =>{
-      const albums = await fetch('https://jsonplaceholder.typicode.com/albums/', { id : id })
+      const pralbums = await fetch(`https://jsonplaceholder.typicode.com/albums/${ id ? id : ''}`)
+      const prphotos = await fetch(`https://jsonplaceholder.typicode.com/photos${ id ? `?userId=${id}`: ''}`)
+      if(id){
+        const albums = await pralbums.json()
+        const photos = await prphotos.json()
+        return [Object.assign( albums, {photos})]
+      }
       return await albums.json()
     },
     comments: async (_, { id }) =>{
@@ -116,8 +139,14 @@ const resolvers = {
       return await comments.json()
     },
     posts: async (_, { id }) =>{
-      const posts = await fetch('https://jsonplaceholder.typicode.com/posts/', { id : id })
-      return await posts.json()
+      const prPosts = await fetch(`https://jsonplaceholder.typicode.com/posts/${ id ? id : ''}`)
+      const prComments = await fetch(`https://jsonplaceholder.typicode.com/comments${ id ? `?postId=${id}`: ''}`)
+      if(id) {
+        const posts = [await prPosts.json()]
+        const comments = await prComments.json()
+        return [Object.assign(posts[0], {comments})]
+      }
+      return await prPosts.json()
     },
   },
 }
